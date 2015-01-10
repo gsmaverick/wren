@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -911,6 +912,14 @@ DEF_NATIVE(range_toString)
   RETURN_VAL(wrenNewString(vm, buffer, length));
 }
 
+DEF_NATIVE(string_capitalize)
+{
+  ObjString* string = AS_STRING(args[0]);
+  string->value[0] = toupper(string->value[0]);
+
+  RETURN_OBJ(string);
+}
+
 DEF_NATIVE(string_contains)
 {
   if (!validateString(vm, args, 1, "Argument")) return PRIM_ERROR;
@@ -930,9 +939,67 @@ DEF_NATIVE(string_count)
   RETURN_NUM(count);
 }
 
+DEF_NATIVE(string_endsWith)
+{
+  if (!validateString(vm, args, 1, "Argument")) return PRIM_ERROR;
+
+  ObjString* string = AS_STRING(args[0]);
+  ObjString* search = AS_STRING(args[1]);
+
+  // Corner case, if the search string is longer than return false right away.
+  if (search->length > string->length) RETURN_FALSE;
+
+  int result = strncmp(string->value + string->length - search->length,
+                       search->value, search->length);
+
+  RETURN_BOOL(result == 0);
+}
+
+DEF_NATIVE(string_indexOf)
+{
+  if (!validateString(vm, args, 1, "Argument")) return PRIM_ERROR;
+
+  ObjString* string = AS_STRING(args[0]);
+  ObjString* search = AS_STRING(args[1]);
+
+  char* firstOccurrence = strstr(string->value, search->value);
+
+  RETURN_NUM(firstOccurrence ? (firstOccurrence - string->value) : -1);
+}
+
+DEF_NATIVE(string_startsWith)
+{
+  if (!validateString(vm, args, 1, "Argument")) return PRIM_ERROR;
+
+  ObjString* string = AS_STRING(args[0]);
+  ObjString* search = AS_STRING(args[1]);
+
+  RETURN_BOOL(strncmp(string->value, search->value, search->length) == 0);
+}
+
+DEF_NATIVE(string_toLowerCase)
+{
+  ObjString* string = AS_STRING(args[0]);
+
+  for (int i = 0; i < string->length; i++)
+    string->value[i] = tolower(string->value[i]);
+
+  RETURN_OBJ(string);
+}
+
 DEF_NATIVE(string_toString)
 {
   RETURN_VAL(args[0]);
+}
+
+DEF_NATIVE(string_toUpperCase)
+{
+  ObjString* string = AS_STRING(args[0]);
+
+  for (int i = 0; i < string->length; i++)
+    string->value[i] = toupper(string->value[i]);
+
+  RETURN_OBJ(string);
 }
 
 DEF_NATIVE(string_plus)
@@ -1128,9 +1195,15 @@ void wrenInitializeCore(WrenVM* vm)
   NATIVE(vm->numClass, "... ", num_dotDotDot);
 
   vm->stringClass = defineClass(vm, "String");
+  NATIVE(vm->stringClass, "capitalize", string_capitalize);
   NATIVE(vm->stringClass, "contains ", string_contains);
   NATIVE(vm->stringClass, "count", string_count);
-  NATIVE(vm->stringClass, "toString", string_toString)
+  NATIVE(vm->stringClass, "endsWith ", string_endsWith);
+  NATIVE(vm->stringClass, "indexOf ", string_indexOf);
+  NATIVE(vm->stringClass, "startsWith ", string_startsWith);
+  NATIVE(vm->stringClass, "toLowerCase", string_toLowerCase);
+  NATIVE(vm->stringClass, "toString", string_toString);
+  NATIVE(vm->stringClass, "toUpperCase", string_toUpperCase);
   NATIVE(vm->stringClass, "+ ", string_plus);
   NATIVE(vm->stringClass, "== ", string_eqeq);
   NATIVE(vm->stringClass, "!= ", string_bangeq);
